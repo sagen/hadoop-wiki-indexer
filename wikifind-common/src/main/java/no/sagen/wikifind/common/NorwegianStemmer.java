@@ -1,4 +1,4 @@
-package no.sagen.wikifind.indexer.mapper;
+package no.sagen.wikifind.common;
 // This file was generated automatically by the Snowball to Java compiler
 
 

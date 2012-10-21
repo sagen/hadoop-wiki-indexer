@@ -1,102 +1,80 @@
 package no.sagen.wikifind.indexer.mapper;
 
 import edu.jhu.nlp.wikipedia.WikiTextParser;
-import no.sagen.wikifind.indexer.transfer.TermFrequencyInDocument;
+import no.sagen.wikifind.indexer.transfer.DocumentTerm;
 import org.apache.hadoop.io.Text;
-import org.apache.hadoop.mapred.*;
+import org.apache.hadoop.mapred.JobConf;
+import org.apache.hadoop.mapred.Mapper;
+import org.apache.hadoop.mapred.OutputCollector;
+import org.apache.hadoop.mapred.Reporter;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
-import java.util.*;
-import java.util.regex.Pattern;
+import java.util.HashMap;
+import java.util.Map;
 
-import static java.util.Arrays.copyOfRange;
-import static java.util.regex.Pattern.compile;
+import static java.lang.Integer.parseInt;
+import static java.util.Arrays.asList;
+import static no.sagen.wikifind.common.Parser.extractTagContents;
+import static no.sagen.wikifind.common.Parser.parse;
 
-public class TermsInWikiPageMapper implements Mapper<Text, Text, Text, TermFrequencyInDocument> {
+public class TermsInWikiPageMapper implements Mapper<Text, Text, Text, DocumentTerm> {
     private static final String TEXT_TAG_NAME = "text";
     private static final String TITLE_TAG_NAME = "title";
     private static final String ID_TAG_NAME = "id";
-    private static final Pattern SPLIT_PATTERN = compile("\\s+");
-    private static final Pattern CLEAN_PATTERN = compile("[\\p{P}\\p{S}]+");
+
 
     @Override
-    public void map(Text key, Text value, OutputCollector<Text, TermFrequencyInDocument> output, Reporter reporter) throws IOException {
-        String extractedTitle = extractFromTag(value, TITLE_TAG_NAME);
-        reporter.setStatus("Mapping " + extractedTitle);
-        if(extractedTitle == null){
+    public void map(Text key, Text value, OutputCollector<Text, DocumentTerm> output, Reporter reporter) throws IOException {
+        String extractedTitle = extractTagContents(value, TITLE_TAG_NAME);
+        if(extractedTitle.startsWith("Wikipedia:")){
             return;
         }
+        reporter.setStatus("Mapping " + extractedTitle);
         String text = extractedTitle + getTextContent(value);
-        long id = Long.parseLong(extractFromTag(value, ID_TAG_NAME));
+        int id = parseInt(extractTagContents(value, ID_TAG_NAME));
         HashMap<String, Integer> termCount = new HashMap<String, Integer>();
-        NorwegianStemmer stemmer = new NorwegianStemmer();
-        for(String word : SPLIT_PATTERN.split(text)){
-            count(termCount, stem(stemmer, word));
+        String[] parsedContent = parse(text);
+        String[] parsedTitle = parse(extractedTitle);
+        for(String term : parsedContent){
+            count(termCount, term);
         }
+        for(String term : parsedTitle){
+            count(termCount, term);
+        }
+
         for(Map.Entry<String, Integer> entry : termCount.entrySet()){
-            output.collect(new Text(entry.getKey()), new TermFrequencyInDocument(id, entry.getValue()));
+            output.collect(new Text(entry.getKey()), new DocumentTerm(id, entry.getValue(), asList(parsedTitle).contains(entry.getKey())));
         }
         reporter.setStatus("Done mapping " + extractedTitle);
     }
 
     private String getTextContent(Text value) throws UnsupportedEncodingException {
-        String extracted = extractFromTag(value, TEXT_TAG_NAME);
+        String extracted = extractTagContents(value, TEXT_TAG_NAME);
         if(extracted == null || extracted.isEmpty()){
             return null;
         }
-        return CLEAN_PATTERN.matcher(new WikiTextParser(extracted).getPlainText().toLowerCase()).replaceAll("");
+        return new WikiTextParser(extracted).getPlainText();
     }
 
     private void count(HashMap<String, Integer> termCount, String stemmedWord) {
-        if(termCount.containsKey(stemmedWord)){
-            termCount.put(stemmedWord, termCount.get(stemmedWord) + 1);
+        Integer val = termCount.get(stemmedWord);
+        if(val != null){
+            termCount.put(stemmedWord, val + 1);
         }else{
             termCount.put(stemmedWord, 1);
         }
     }
 
-    private String stem(NorwegianStemmer stemmer, String word) {
-        stemmer.setCurrent(word);
-        stemmer.stem();
-        return stemmer.getCurrent();
-    }
 
-    private String extractFromTag(Text text, String tagName) throws UnsupportedEncodingException {
-        String endTag = "</" + tagName + ">";
-        String startTagStart = "<" + tagName;
-        int startPos = findTextStartPos(text.getBytes(), startTagStart.getBytes("UTF-8"));
-        int endPos = text.find(endTag);
-        if(startPos == -1 || endPos == -1){
-            return null;
-        }
-        return new String(copyOfRange(text.getBytes(), startPos, endPos), "UTF-8");
-    }
 
-    private int findTextStartPos(byte[] inputBytes, byte[] tagStart){
-        int posInTagStart = 0;
-        int pos = -1;
-        for(byte b : inputBytes){
-            pos++;
-            if(posInTagStart == tagStart.length - 1){
-                if(b == '>'){
-                    return pos + 1;
-                }
-            }else if(b == tagStart[posInTagStart]){
-                posInTagStart++;
-            }else{
-                posInTagStart = 0;
-            }
-        }
-        return -1;
-    }
+
+
     @Override
     public void close() throws IOException {
-        //To change body of implemented methods use File | Settings | File Templates.
     }
 
     @Override
     public void configure(JobConf job) {
-        //To change body of implemented methods use File | Settings | File Templates.
     }
 }

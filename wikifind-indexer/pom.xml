@@ -20,11 +20,6 @@
             <url>http://repo1.maven.org/maven2</url>
         </repository>
         <repository>
-            <id>riptano</id>
-            <name>riptano</name>
-            <url>http://mvn.riptano.com/content/repositories/public</url>
-        </repository>
-        <repository>
             <id>maven.scale7.org</id>
             <name>Scale7 Maven Repo</name>
             <url>https://github.com/s7/mvnrepo/raw/master</url>
@@ -34,11 +29,7 @@
         </repository>
     </repositories>
     <dependencies>
-        <dependency>
-            <groupId>org.apache.lucene</groupId>
-            <artifactId>lucene-snowball</artifactId>
-            <version>3.0.2</version>
-        </dependency>
+
         <dependency>
             <groupId>edu.jhu.nlp</groupId>
             <artifactId>wikixmlj</artifactId>
@@ -69,13 +60,6 @@
             <artifactId>wikifind-common</artifactId>
             <version>0.1</version>
         </dependency>
-
-        <dependency>
-            <groupId>org.hectorclient</groupId>
-            <artifactId>hector-core</artifactId>
-            <version>1.1-1</version>
-        </dependency>
-
 
     </dependencies>
     <build>

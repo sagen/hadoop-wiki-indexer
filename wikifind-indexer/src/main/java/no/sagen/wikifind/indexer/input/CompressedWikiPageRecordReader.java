@@ -1,16 +1,21 @@
 package no.sagen.wikifind.indexer.input;
 
-import no.sagen.wikifind.indexer.Main;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.OutputBuffer;
 import org.apache.hadoop.io.Text;
-import org.apache.hadoop.io.compress.*;
-import org.apache.hadoop.mapred.*;
+import org.apache.hadoop.io.compress.BZip2Codec;
+import org.apache.hadoop.io.compress.CompressionCodecFactory;
+import org.apache.hadoop.io.compress.CompressionInputStream;
+import org.apache.hadoop.mapred.FileSplit;
+import org.apache.hadoop.mapred.JobConf;
+import org.apache.hadoop.mapred.RecordReader;
+import org.apache.hadoop.mapred.Reporter;
 
 import java.io.IOException;
 
+import static no.sagen.wikifind.indexer.Main.DOCS_COUNT_FIILE;
 import static no.sagen.wikifind.indexer.input.PageReader.readUntilEndOfPage;
 
 public class CompressedWikiPageRecordReader implements RecordReader<Text, Text> {
@@ -20,7 +25,7 @@ public class CompressedWikiPageRecordReader implements RecordReader<Text, Text> 
     private int pos;
     private Reporter reporter;
     private final FileSystem fs;
-    private long count;
+    private int count;
     public CompressedWikiPageRecordReader(FileSplit fileSplit, JobConf job, Reporter reporter) throws IOException {
         this.fileSplit = fileSplit;
         fs = fileSplit.getPath().getFileSystem(job);
@@ -65,10 +70,10 @@ public class CompressedWikiPageRecordReader implements RecordReader<Text, Text> 
 
     @Override
     public void close() throws IOException {
-        FSDataOutputStream fsDataOutputStream = fs.create(new Path(Main.DOCS_COUNT_FIILE));
-        fsDataOutputStream.writeLong(count);
+        FSDataOutputStream fsDataOutputStream = fs.create(new Path(DOCS_COUNT_FIILE));
+        fsDataOutputStream.writeInt(count);
         fsDataOutputStream.close();
-        System.out.println("Closed RecordReader");
+        reporter.setStatus("Closed RecordReader");
         is.close();
     }
 }

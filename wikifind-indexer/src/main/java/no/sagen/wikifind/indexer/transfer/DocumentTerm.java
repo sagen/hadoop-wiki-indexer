@@ -7,27 +7,27 @@ import java.io.DataOutput;
 import java.io.IOException;
 
 public class DocumentTerm implements Writable{
-    long docId;
-    int documentFrequency;
+    int docId;
     int termFrequency;
+    boolean inTitle;
 
     public DocumentTerm() {}
-    public DocumentTerm(long docId, int termFrequency) {
+    public DocumentTerm(DocumentTerm copyFrom) {
+        this.docId = copyFrom.docId;
+        this.termFrequency = copyFrom.termFrequency;
+        this.inTitle = copyFrom.inTitle;
+    }
+    public DocumentTerm(int docId, int termFrequency, boolean inTitle) {
         this.docId = docId;
         this.termFrequency = termFrequency;
+        this.inTitle = inTitle;
     }
 
-    public void setDocumentFrequency(int documentFrequency) {
-        this.documentFrequency = documentFrequency;
-    }
 
-    public long getDocId() {
+    public int getDocId() {
         return docId;
     }
 
-    public int getDocumentFrequency() {
-        return documentFrequency;
-    }
 
     public int getTermFrequency() {
         return termFrequency;
@@ -35,15 +35,19 @@ public class DocumentTerm implements Writable{
 
     @Override
     public void write(DataOutput dataOutput) throws IOException {
-        dataOutput.writeInt(documentFrequency);
         dataOutput.writeInt(termFrequency);
-        dataOutput.writeLong(docId);
+        dataOutput.writeInt(docId);
+        dataOutput.writeBoolean(inTitle);
     }
 
     @Override
     public void readFields(DataInput dataInput) throws IOException {
-        documentFrequency = dataInput.readInt();
         termFrequency = dataInput.readInt();
-        docId = dataInput.readLong();
+        docId = dataInput.readInt();
+        inTitle = dataInput.readBoolean();
+    }
+
+    public boolean getInTitle() {
+        return inTitle;
     }
 }

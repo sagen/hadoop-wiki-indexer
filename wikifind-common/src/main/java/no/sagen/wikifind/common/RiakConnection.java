@@ -1,7 +1,9 @@
 package no.sagen.wikifind.common;
 
 
+import com.basho.riak.client.IRiakClient;
 import com.basho.riak.client.RiakException;
+import com.basho.riak.client.RiakFactory;
 import com.basho.riak.pbc.RiakClient;
 
 import java.io.IOException;
@@ -10,7 +12,7 @@ public class RiakConnection {
 
     private static RiakClient client;
 
-    public static RiakClient getClient() throws RiakException, IOException {
+    public static RiakClient getPutClient() throws RiakException, IOException {
         if(client == null){
             int i = 0;
             client = new RiakClient("localhost");
@@ -25,5 +27,9 @@ public class RiakConnection {
         return client;
             //IRiakClient riakClient = RiakFactory.pbcClient();
             //bucket = riakClient.createBucket("tfidf").execute();
+    }
+
+    public static IRiakClient getFetchClient() throws RiakException {
+        return RiakFactory.pbcClient();
     }
 }

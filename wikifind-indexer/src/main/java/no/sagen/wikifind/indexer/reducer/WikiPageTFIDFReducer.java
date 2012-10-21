@@ -1,7 +1,6 @@
 package no.sagen.wikifind.indexer.reducer;
 
 import no.sagen.wikifind.indexer.transfer.DocumentTerm;
-import no.sagen.wikifind.indexer.transfer.TermFrequencyInDocument;
 import no.sagen.wikifind.indexer.transfer.TfIdfWritable;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.Path;
@@ -15,26 +14,23 @@ import java.util.List;
 
 import static no.sagen.wikifind.indexer.Main.DOCS_COUNT_FIILE;
 
-public class WikiPageTFIDFReducer implements Reducer<Text, TermFrequencyInDocument, Text, TfIdfWritable> {
+public class WikiPageTFIDFReducer implements Reducer<Text, DocumentTerm, Text, TfIdfWritable> {
 
-    private long recordCount;
+    private long totalNumberOfDocuments;
 
     @Override
-    public void reduce(Text term, Iterator<TermFrequencyInDocument> values, OutputCollector<Text, TfIdfWritable> output, Reporter reporter) throws IOException {
+    public void reduce(Text term, Iterator<DocumentTerm> incomingDocumentTerms, OutputCollector<Text, TfIdfWritable> output, Reporter reporter) throws IOException {
         int docsContainingTerm = 0;
         List<DocumentTerm> documentTerms = new ArrayList<>();
-
-        while (values.hasNext()){
+        while (incomingDocumentTerms.hasNext()){
             docsContainingTerm++;
-            TermFrequencyInDocument termFrequencyInDoc = values.next();
-            documentTerms.add(new DocumentTerm(termFrequencyInDoc.getDocId(), termFrequencyInDoc.getFrequence()));
+            documentTerms.add(new DocumentTerm(incomingDocumentTerms.next()));
         }
-        TfIdfWritable out = new TfIdfWritable(docsContainingTerm);
-        for(DocumentTerm doc : documentTerms){
-            doc.setDocumentFrequency(docsContainingTerm);
-            out.add(doc.getDocId(), doc.getTermFrequency() * Math.log(recordCount / ((double)doc.getDocumentFrequency())));
+        float idf = (float) Math.log(totalNumberOfDocuments / ((double) docsContainingTerm));
+        TfIdfWritable out = new TfIdfWritable(idf);
+        for(DocumentTerm docTerm : documentTerms){
+            out.add(docTerm.getDocId(),((float) (1 + Math.log(docTerm.getTermFrequency())) * idf), docTerm.getInTitle());
         }
-
         output.collect(term, out);
         reporter.setStatus("Reduced " + term.toString());
     }
@@ -46,7 +42,7 @@ public class WikiPageTFIDFReducer implements Reducer<Text, TermFrequencyInDocume
     public void configure(JobConf conf) {
         try {
             FSDataInputStream countInputStream = new JobClient(conf).getFs().open(new Path(DOCS_COUNT_FIILE));
-            recordCount = countInputStream.readLong();
+            totalNumberOfDocuments = countInputStream.readInt();
             countInputStream.close();
         } catch (IOException e) {
             e.printStackTrace();
