@@ -5,13 +5,17 @@ import org.apache.hadoop.io.Writable;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class DocumentTerm implements Writable{
     int docId;
     int termFrequency;
     boolean inTitle;
+    static long written = 0;
 
     public DocumentTerm() {}
+
     public DocumentTerm(DocumentTerm copyFrom) {
         this.docId = copyFrom.docId;
         this.termFrequency = copyFrom.termFrequency;
@@ -22,17 +26,13 @@ public class DocumentTerm implements Writable{
         this.termFrequency = termFrequency;
         this.inTitle = inTitle;
     }
-
-
     public int getDocId() {
         return docId;
     }
 
-
     public int getTermFrequency() {
         return termFrequency;
     }
-
     @Override
     public void write(DataOutput dataOutput) throws IOException {
         dataOutput.writeInt(termFrequency);

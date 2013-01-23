@@ -19,14 +19,7 @@
             <name>Maven Central Repo</name>
             <url>http://repo1.maven.org/maven2</url>
         </repository>
-        <repository>
-            <id>maven.scale7.org</id>
-            <name>Scale7 Maven Repo</name>
-            <url>https://github.com/s7/mvnrepo/raw/master</url>
-            <snapshots>
-                <enabled>true</enabled>
-            </snapshots>
-        </repository>
+
     </repositories>
     <dependencies>
 
@@ -37,23 +30,8 @@
         </dependency>
         <dependency>
             <groupId>org.apache.hadoop</groupId>
-            <artifactId>hadoop-client</artifactId>
-            <version>1.0.3</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.hadoop</groupId>
-            <artifactId>hadoop-streaming</artifactId>
-            <version>1.0.3</version>
-        </dependency>
-        <dependency>
-            <groupId>commons-httpclient</groupId>
-            <artifactId>commons-httpclient</artifactId>
-            <version>3.1</version>
-        </dependency>
-        <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-jdk14</artifactId>
-            <version>1.6.6</version>
+            <artifactId>hadoop-mapreduce-client-common</artifactId>
+            <version>2.0.2-alpha</version>
         </dependency>
         <dependency>
             <groupId>no.sagen.wikifind</groupId>

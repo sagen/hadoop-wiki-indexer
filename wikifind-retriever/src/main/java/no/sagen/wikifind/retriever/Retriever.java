@@ -1,6 +1,7 @@
 package no.sagen.wikifind.retriever;
 
 import com.basho.riak.client.IRiakClient;
+import com.basho.riak.client.IRiakObject;
 import com.basho.riak.client.RiakException;
 import com.basho.riak.client.bucket.Bucket;
 import no.sagen.wikifind.common.RiakConnection;
@@ -15,10 +16,13 @@ public class Retriever {
     public static List<CandidateDocument> retrieve(String phrase) throws RiakException {
         Set<String> terms = new HashSet<>(asList(parse(phrase)));
         IRiakClient client = RiakConnection.getFetchClient();
+
         Bucket tfidfBucket = client.fetchBucket("tfidf").execute();
 
         Map<Integer, CandidateDocument> candidateDocs = new HashMap<>();
         Query query = new Query(terms);
+        Bucket titleBucket = client.fetchBucket("title").execute();
+
         for(String term : terms){
             ByteBuffer buffer = ByteBuffer.wrap(tfidfBucket.fetch(term).execute().getValue());
             query.add(term, buffer.getFloat(), false);
@@ -29,18 +33,22 @@ public class Retriever {
                 CandidateDocument doc = candidateDocs.get(docKey);
                 if(doc == null){
                     doc = new CandidateDocument(docKey);
+                    doc.setEuclideanNorm(EuclideanNormStore.getNorm(docKey));
                     candidateDocs.put(docKey, doc);
+                    IRiakObject titleResult = titleBucket.fetch(Integer.toString(doc.getDocId())).execute();
+                    if(titleResult != null){
+                        String title = titleResult.getValueAsString();
+                        doc.setTitle(title);
+                    }
                 }
                 doc.add(term, tfidf, boost);
             }
-
         }
         for(CandidateDocument doc : candidateDocs.values()){
             query.setSimilarityOnDoc(doc);
         }
         List<CandidateDocument> result = new ArrayList<>(candidateDocs.values());
         Collections.sort(result);
-        Bucket titleBucket = client.fetchBucket("title").execute();
 
         List<CandidateDocument> res = new ArrayList<>();
         int i = 0;
@@ -52,4 +60,6 @@ public class Retriever {
         }
         return res;
     }
+
+
 }

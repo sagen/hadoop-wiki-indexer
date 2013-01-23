@@ -2,25 +2,19 @@ package no.sagen.wikifind.indexer.output;
 
 
 import com.basho.riak.client.RiakException;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.mapred.JobConf;
-import org.apache.hadoop.mapred.OutputFormat;
-import org.apache.hadoop.mapred.RecordWriter;
-import org.apache.hadoop.util.Progressable;
+import org.apache.hadoop.mapreduce.*;
+import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 
 import java.io.IOException;
 
-public class IdToTitleOutputFormat implements OutputFormat {
+public class IdToTitleOutputFormat extends FileOutputFormat {
     @Override
-    public RecordWriter getRecordWriter(FileSystem fileSystem, JobConf entries, String s, Progressable progressable) throws IOException {
+    public RecordWriter getRecordWriter(TaskAttemptContext taskAttemptContext) throws IOException, InterruptedException {
         try {
             return new IdToTitleRecordWriter();
         } catch (RiakException e) {
-            e.printStackTrace();
+            throw new RuntimeException(e);
         }
-        return null;
     }
 
-    @Override
-    public void checkOutputSpecs(FileSystem fileSystem, JobConf entries) throws IOException {}
 }

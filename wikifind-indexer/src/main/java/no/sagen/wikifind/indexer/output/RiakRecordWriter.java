@@ -5,14 +5,14 @@ import com.basho.riak.pbc.RequestMeta;
 import com.basho.riak.pbc.RiakClient;
 import com.basho.riak.pbc.RiakObject;
 import no.sagen.wikifind.common.RiakConnection;
-import org.apache.hadoop.mapred.RecordWriter;
-import org.apache.hadoop.mapred.Reporter;
+import org.apache.hadoop.mapreduce.RecordWriter;
+import org.apache.hadoop.mapreduce.TaskAttemptContext;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-public abstract class RiakRecordWriter<K, V> implements RecordWriter<K, V> {
+public abstract class RiakRecordWriter<K, V> extends RecordWriter<K, V> {
     private RiakClient riakClient;
     private long count = 0;
     private List<RiakObject> buffer = new ArrayList<>(100000);
@@ -32,11 +32,11 @@ public abstract class RiakRecordWriter<K, V> implements RecordWriter<K, V> {
     }
 
     @Override
-    public void close(Reporter reporter) throws IOException {
+    public void close(TaskAttemptContext context) throws IOException {
         if(!buffer.isEmpty()){
             riakClient.store(buffer.toArray(new RiakObject[buffer.size()]), new RequestMeta());
             buffer.clear();
         }
-        reporter.setStatus(count + " rows written to DB!");
+        context.setStatus(count + " rows written to DB!");
     }
 }

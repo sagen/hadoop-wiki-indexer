@@ -7,14 +7,13 @@ import org.apache.hadoop.util.Progressable;
 
 import java.io.IOException;
 
-public class TfIdfRiakOutputFormat extends OutputFormat {
+public class EuclideanNormOutputFormat extends OutputFormat {
 
-    public TfIdfRiakOutputFormat() {}
 
     @Override
     public RecordWriter getRecordWriter(TaskAttemptContext taskAttemptContext) throws IOException, InterruptedException {
         try {
-            return new TfIdfRiakRecordWriter();
+            return new EuclideanNormRecordWriter();
         } catch (RiakException e) {
             throw new RuntimeException(e);
         }

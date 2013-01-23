@@ -8,7 +8,7 @@ import static no.sagen.wikifind.retriever.Retriever.retrieve;
 
 public class Main {
     public static void main(String[] args) throws IOException, RiakException {
-        String phrase = "jeg bedriver arbeid";
+        String phrase = "spinn";
         retrieve(phrase);
     }
 }

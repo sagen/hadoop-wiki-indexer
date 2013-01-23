@@ -1,5 +1,6 @@
 package no.sagen.wikifind.retriever;
 
+
 import javax.xml.bind.annotation.XmlRootElement;
 import java.util.HashMap;
 import java.util.Map;
@@ -12,8 +13,9 @@ public class CandidateDocument implements Comparable<CandidateDocument>{
     double similarity;
     final int docId;
 
-    String title;
+    float euclideanNorm;
 
+    String title;
     public CandidateDocument(int docId) {
         this.docId = docId;
     }
@@ -23,7 +25,12 @@ public class CandidateDocument implements Comparable<CandidateDocument>{
     }
 
     void add(String term, float tfidf, boolean boost){
-        tfidfs.put(term, tfidf * (boost ? 1 : 2));
+        tfidfs.put(term, tfidf * (boost ? 1.5f : 1f));
+
+    }
+
+    public void setEuclideanNorm(float euclideanNorm) {
+        this.euclideanNorm = euclideanNorm;
     }
 
     public String getTitle() {

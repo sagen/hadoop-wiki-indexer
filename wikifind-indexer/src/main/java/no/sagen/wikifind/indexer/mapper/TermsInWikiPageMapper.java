@@ -3,10 +3,7 @@ package no.sagen.wikifind.indexer.mapper;
 import edu.jhu.nlp.wikipedia.WikiTextParser;
 import no.sagen.wikifind.indexer.transfer.DocumentTerm;
 import org.apache.hadoop.io.Text;
-import org.apache.hadoop.mapred.JobConf;
-import org.apache.hadoop.mapred.Mapper;
-import org.apache.hadoop.mapred.OutputCollector;
-import org.apache.hadoop.mapred.Reporter;
+import org.apache.hadoop.mapreduce.Mapper;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -17,21 +14,19 @@ import static java.lang.Integer.parseInt;
 import static java.util.Arrays.asList;
 import static no.sagen.wikifind.common.Parser.extractTagContents;
 import static no.sagen.wikifind.common.Parser.parse;
+import static no.sagen.wikifind.indexer.mapper.ParsingUtils.*;
 
-public class TermsInWikiPageMapper implements Mapper<Text, Text, Text, DocumentTerm> {
-    private static final String TEXT_TAG_NAME = "text";
-    private static final String TITLE_TAG_NAME = "title";
-    private static final String ID_TAG_NAME = "id";
-
+public class TermsInWikiPageMapper extends Mapper<Text, Text, Text, DocumentTerm> {
+    private static long written = 0;
 
     @Override
-    public void map(Text key, Text value, OutputCollector<Text, DocumentTerm> output, Reporter reporter) throws IOException {
+    public void map(Text nonsense, Text value, Context context) throws IOException, InterruptedException {
         String extractedTitle = extractTagContents(value, TITLE_TAG_NAME);
-        if(extractedTitle.startsWith("Wikipedia:")){
+        if(!shouldDocumentBeIndexedBasedOnTitle(extractedTitle)){
             return;
         }
-        reporter.setStatus("Mapping " + extractedTitle);
-        String text = extractedTitle + getTextContent(value);
+        //reporter.setStatus("Mapping " + extractedTitle);
+        String text = extractedTitle + " " + getTextContent(value);
         int id = parseInt(extractTagContents(value, ID_TAG_NAME));
         HashMap<String, Integer> termCount = new HashMap<String, Integer>();
         String[] parsedContent = parse(text);
@@ -42,11 +37,14 @@ public class TermsInWikiPageMapper implements Mapper<Text, Text, Text, DocumentT
         for(String term : parsedTitle){
             count(termCount, term);
         }
-
+        long beforeWritten = written;
         for(Map.Entry<String, Integer> entry : termCount.entrySet()){
-            output.collect(new Text(entry.getKey()), new DocumentTerm(id, entry.getValue(), asList(parsedTitle).contains(entry.getKey())));
+            context.write(new Text(entry.getKey()), new DocumentTerm(id, entry.getValue(), asList(parsedTitle).contains(entry.getKey())));
+            written +=  13 + (4 * termCount.size());
+            System.out.println("Mapped " + written + " bytes");
         }
-        reporter.setStatus("Done mapping " + extractedTitle);
+        System.out.println("Written for " + extractedTitle + " : " + (written - beforeWritten));
+        context.setStatus("Done mapping " + extractedTitle + " with " + termCount.size() + " unique terms");
     }
 
     private String getTextContent(Text value) throws UnsupportedEncodingException {
@@ -55,26 +53,5 @@ public class TermsInWikiPageMapper implements Mapper<Text, Text, Text, DocumentT
             return null;
         }
         return new WikiTextParser(extracted).getPlainText();
-    }
-
-    private void count(HashMap<String, Integer> termCount, String stemmedWord) {
-        Integer val = termCount.get(stemmedWord);
-        if(val != null){
-            termCount.put(stemmedWord, val + 1);
-        }else{
-            termCount.put(stemmedWord, 1);
-        }
-    }
-
-
-
-
-
-    @Override
-    public void close() throws IOException {
-    }
-
-    @Override
-    public void configure(JobConf job) {
     }
 }

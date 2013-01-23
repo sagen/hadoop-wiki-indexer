@@ -12,7 +12,9 @@ import static java.nio.ByteBuffer.allocate;
 
 public class TfIdfWritable implements Writable {
     class DocTerm implements Comparable<DocTerm>{
-        float tfidf; int docId; boolean boost;
+        float tfidf; int docId;
+        private float euclideanNorm;
+        boolean boost;
         DocTerm(int docId, float tfidf, boolean boost) {
             this.tfidf = tfidf;
             this.docId = docId;

@@ -1,5 +1,6 @@
 package no.sagen.wikifind.indexer.input;
 
+import no.sagen.wikifind.indexer.Main;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -8,30 +9,62 @@ import org.apache.hadoop.io.Text;
 import org.apache.hadoop.io.compress.BZip2Codec;
 import org.apache.hadoop.io.compress.CompressionCodecFactory;
 import org.apache.hadoop.io.compress.CompressionInputStream;
-import org.apache.hadoop.mapred.FileSplit;
-import org.apache.hadoop.mapred.JobConf;
-import org.apache.hadoop.mapred.RecordReader;
-import org.apache.hadoop.mapred.Reporter;
+import org.apache.hadoop.mapreduce.InputSplit;
+import org.apache.hadoop.mapreduce.RecordReader;
+import org.apache.hadoop.mapreduce.TaskAttemptContext;
+import org.apache.hadoop.mapreduce.lib.input.FileSplit;
 
+import java.io.BufferedWriter;
+import java.io.FileWriter;
 import java.io.IOException;
 
-import static no.sagen.wikifind.indexer.Main.DOCS_COUNT_FIILE;
+import static no.sagen.wikifind.indexer.Main.TMP_DOC_COUNT_FILE;
 import static no.sagen.wikifind.indexer.input.PageReader.readUntilEndOfPage;
 
-public class CompressedWikiPageRecordReader implements RecordReader<Text, Text> {
+public class CompressedWikiPageRecordReader extends RecordReader<Text, Text> {
 
     private FileSplit fileSplit;
     private CompressionInputStream is;
     private int pos;
-    private Reporter reporter;
-    private final FileSystem fs;
+    private FileSystem fs;
     private int count;
-    public CompressedWikiPageRecordReader(FileSplit fileSplit, JobConf job, Reporter reporter) throws IOException {
-        this.fileSplit = fileSplit;
-        fs = fileSplit.getPath().getFileSystem(job);
-        BZip2Codec codec = (BZip2Codec) new CompressionCodecFactory(job).getCodec(this.fileSplit.getPath());
+    private TaskAttemptContext taskAttemptContext;
+    Text currentKey, currentValue;
+
+    @Override
+    public void initialize(InputSplit inputSplit, TaskAttemptContext taskAttemptContext) throws IOException, InterruptedException {
+       this.fileSplit = (FileSplit) inputSplit;
+        this.taskAttemptContext = taskAttemptContext;
+        fs = fileSplit.getPath().getFileSystem(taskAttemptContext.getConfiguration());
+        BZip2Codec codec = (BZip2Codec) new CompressionCodecFactory(taskAttemptContext.getConfiguration()).getCodec(this.fileSplit.getPath());
         is = codec.createInputStream(fs.open(fileSplit.getPath()));
-        this.reporter = reporter;
+    }
+
+    @Override
+    public boolean nextKeyValue() throws IOException, InterruptedException {
+        OutputBuffer buf = new OutputBuffer();
+        int movedPos;
+        if ((movedPos = readUntilEndOfPage(is, buf)) == -1) {
+            System.out.println("Read " + count + " wikipedia articles");
+            currentKey = null;
+            currentValue = null;
+            return false;
+        }
+        pos += movedPos;
+        currentKey = new Text("");
+        currentValue = new Text(buf.getData());
+        count++;
+        return true;
+    }
+
+    @Override
+    public Text getCurrentKey() throws IOException, InterruptedException {
+        return currentKey;
+    }
+
+    @Override
+    public Text getCurrentValue() throws IOException, InterruptedException {
+        return currentValue;
     }
 
     @Override
@@ -40,40 +73,12 @@ public class CompressedWikiPageRecordReader implements RecordReader<Text, Text> 
     }
 
     @Override
-    public boolean next(Text key, Text value) throws IOException {
-        OutputBuffer buf = new OutputBuffer();
-        int movedPos;
-        if ((movedPos = readUntilEndOfPage(is, buf)) == -1) {
-            return false;
-        }
-        pos += movedPos;
-        key.set("");
-        value.set(buf.getData());
-        count++;
-        return true;
-    }
-
-    @Override
-    public Text createKey() {
-        return new Text();
-    }
-
-    @Override
-    public Text createValue() {
-        return new Text();
-    }
-
-    @Override
-    public long getPos() throws IOException {
-        return pos;
-    }
-
-    @Override
     public void close() throws IOException {
-        FSDataOutputStream fsDataOutputStream = fs.create(new Path(DOCS_COUNT_FIILE));
-        fsDataOutputStream.writeInt(count);
-        fsDataOutputStream.close();
-        reporter.setStatus("Closed RecordReader");
+        BufferedWriter bw = new BufferedWriter(new FileWriter(TMP_DOC_COUNT_FILE));
+        bw.write(Integer.toString(count));
+        bw.close();
+        taskAttemptContext.setStatus("Closed RecordReader");
+        System.out.println("Pages read: " + count);
         is.close();
     }
 }
